@@ -1,0 +1,21 @@
+{
+    "name": "michaldudek/genry-blog",
+    "description": "Simple blog functionality / module for Genry.",
+    "keywords": ["generator", "static", "twig", "html", "blog"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Michał Dudek",
+            "email": "michal@michaldudek.pl"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.3",
+        "michaldudek/genry": "dev-master"
+    },
+    "autoload": {
+        "psr-0": {
+            "MD\\GenryBlogModule": "src/"
+        }
+    }
+}
