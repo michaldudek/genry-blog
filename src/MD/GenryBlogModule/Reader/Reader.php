@@ -46,50 +46,80 @@ class Reader
         $article->setSlug($file->getFilename());
 
         $raw = file_get_contents($file->getPathname());
+        $article->setRaw($raw);
 
+        $this->readMarkdown($article, $raw);
+
+        return $article;
+    }
+
+    protected function readMarkdown(Article $article, $markdown) {
         // line 0: title
         // line 1: ======
-        // line 2: date or empty
-        // line 3: empty or content
-        // line 4: content
+        // line 2: date
+        // line 3: ![cover](url) image
+        // line 4: empty
+        // line 5: teaser
         // line ...
-        // line i: ########## (#x10) teaser breakpoint
+        // line i: empty
+        // line i+1: content
         // line ...
-        $lines = explode(NL, $raw);
 
-        // set title from line 0
-        $article->setTitle($lines[0]);
-
-        $contentStartLine = 4;
-
-        // set date from line 2, otherwise from file mtime
-        $dateLine = trim($lines[2]);
-        if (!empty($dateLine) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateLine)) {
-            $dateElements = explode('-', $dateLine);
-            $date = new DateTime('@'. mktime(12, 0, 0, $dateElements[1], $dateElements[2], $dateElements[0]));
-        } else {
-            $contentStartLine = 3;
-            $date = new DateTime('@'. filemtime($file));
-        }
-        $article->setDate($date);
-
-        // set teaser and content
         $teaser = '';
-        $includeInTeaser = true;
+        $inTeaser = true;
         $content = '';
 
-        for ($i = $contentStartLine; $i < count($lines); $i++) {
-            if ($lines[$i] === '##########') {
-                $includeInTeaser = false;
+        $lines = explode(NL, $markdown);
+        foreach($lines as $i => $line) {
+            $trimmedLine = trim($line);
+
+            // line 0 must always be the title
+            if ($i === 0) {
+                $article->setTitle($trimmedLine);
                 continue;
             }
 
-            if ($includeInTeaser) {
-                $teaser .= NL . $lines[$i];
+            // line 1 must always be a horizontal line / hr
+            if ($i === 1) {
+                continue;
             }
 
-            $content .= NL . $lines[$i];
+            // line 2 must always be the date
+            if ($i === 2) {
+                if (!empty($trimmedLine) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $trimmedLine)) {
+                    $dateElements = explode('-', $trimmedLine);
+                    $date = new DateTime('@'. mktime(12, 0, 0, $dateElements[1], $dateElements[2], $dateElements[0]));
+                }
+                $article->setDate($date);
+                continue;
+            }
+
+            // line 3 *might* be a cover image
+            if ($i === 3) {
+                if (!empty($trimmedLine) && preg_match('/^!\[cover\]\(([^\s]+)((\s+)(.*))?\)/sUi', $trimmedLine, $matches)) {
+                    // $matches[1] is the cover URL
+                    if (isset($matches[1])) {
+                        $article->setCover($matches[1]);
+                        continue;
+                    }
+                }
+            }
+
+            // if line is empty then no longer include the content in the teaser
+            if (empty($trimmedLine) && $i > 4) {
+                $inTeaser = false;
+            }
+
+            // include this line in either teaser or content
+            if ($inTeaser) {
+                $teaser .= $line . NL;
+            } else {
+                $content .= $line . NL;
+            }
         }
+
+        $teaser = trim($teaser);
+        $content = trim($content);
 
         // parse markdown for both teaser and content
         $teaser = MarkdownExtra::defaultTransform($teaser);
@@ -97,11 +127,9 @@ class Reader
 
         $article->setTeaser($teaser);
         $article->setContent($content);
-        
-        // set raw content
-        $article->setRaw($raw);
 
         return $article;
+
     }
 
 }
