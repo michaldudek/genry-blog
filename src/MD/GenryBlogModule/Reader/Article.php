@@ -1,9 +1,9 @@
 <?php
 namespace MD\GenryBlogModule\Reader;
 
-use MD\Foundation\MDObject;
+use MD\Foundation\MagicObject;
 
-class Article extends MDObject
+class Article extends MagicObject
 {
 
     protected $__properties = array(
