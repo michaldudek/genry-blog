@@ -10,6 +10,7 @@ class Article extends MagicObject
         'slug' => '',
         'title' => '',
         'date' => '',
+        'cover' => '',
         'teaser' => '',
         'content' => '',
         'raw' => ''
