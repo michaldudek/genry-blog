@@ -4,7 +4,6 @@ namespace MD\GenryBlogModule\Templating;
 use SplFileInfo;
 use Twig_Extension;
 
-use MD\Genry\Genry;
 use MD\GenryBlogModule\Reader\Reader;
 
 class BlogExtension extends Twig_Extension
@@ -12,11 +11,8 @@ class BlogExtension extends Twig_Extension
 
     protected $reader;
 
-    protected $genry;
-
-    public function __construct(Reader $reader, Genry $genry) {
+    public function __construct(Reader $reader) {
         $this->reader = $reader;
-        $this->genry = $genry;
     }
 
     /**
@@ -26,7 +22,8 @@ class BlogExtension extends Twig_Extension
      */
     public function getFunctions() {
         return array(
-            new \Twig_SimpleFunction('blog_articles', array($this, 'generateArticles'))
+            new \Twig_SimpleFunction('blog_articles', array($this, 'getArticles')),
+            new \Twig_SimpleFunction('blog_article', array($this, 'getArticle'))
         );
     }
 
@@ -39,23 +36,12 @@ class BlogExtension extends Twig_Extension
         return 'genry_blog_module.extension';
     }
 
-    public function generateArticles(array $requestedArticles, $template, $targetPath) {
-        $articles = array();
-        $targetPath = rtrim($targetPath, DS);
+    public function getArticles($limit = null, $offset = 0) {
+        return $this->reader->getArticles($limit, $offset);
+    }
 
-        foreach($requestedArticles as $slug => $sourceFile) {
-            $article = $this->reader->readFromFile(new SplFileInfo($sourceFile));
-            $article->setSlug($slug);
-            $articles[] = $article;
-
-            // also generate full page for this article (but delay it by adding to the queue
-            // in order to not mess up assets containers)
-            $this->genry->addToQueue($template, array(
-                'article' => $article
-            ), $targetPath . DS . $slug .'.html');
-        }
-
-        return $articles;
+    public function getArticle($slug) {
+        return $this->reader->getArticle($slug);
     }
 
 }

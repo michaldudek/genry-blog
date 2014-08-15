@@ -7,9 +7,11 @@ use SplFileInfo;
 use Michelf\MarkdownExtra;
 
 use MD\Foundation\Exceptions\NotFoundException;
+use MD\Foundation\Utils\ArrayUtils;
 
 use Splot\Framework\Resources\Finder;
 
+use MD\Genry\Data\LoaderInterface;
 use MD\GenryBlogModule\Reader\Article;
 
 class Reader
@@ -23,12 +25,129 @@ class Reader
     protected $finder;
 
     /**
+     * Genry data loader.
+     * 
+     * @var LoaderInterface
+     */
+    protected $loader;
+
+    /**
+     * Name of the file where blog data is stored.
+     * 
+     * @var string
+     */
+    protected $dataFile;
+
+    /**
+     * Directory where all articles are stored, relative to the data dir.
+     * 
+     * @var string
+     */
+    protected $articlesDir;
+
+    /**
+     * Data about all blog articles.
+     * 
+     * @var array
+     */
+    protected $data = array();
+
+    /**
+     * Articles cache.
+     * 
+     * @var array
+     */
+    private $_articles = array();
+
+    /**
+     * Has data been loaded?
+     * 
+     * @var boolean
+     */
+    private $_loaded = false;
+
+    /**
      * Constructor.
      * 
      * @param Finder $finder Splot Resource finder.
      */
-    public function __construct(Finder $finder) {
+    public function __construct(
+        Finder $finder,
+        LoaderInterface $loader,
+        $dataDir,
+        $dataFile,
+        $articlesDir
+    ) {
         $this->finder = $finder;
+        $this->loader = $loader;
+        $this->dataFile = $dataFile;
+        $this->articlesDir = rtrim($dataDir, DS) . DS . trim($articlesDir, DS) . DS;
+    }
+
+    /**
+     * Loads information about all articles.
+     * 
+     * @return array
+     */
+    public function load() {
+        if ($this->_loaded) {
+            return $this->data;
+        }
+
+        try {
+            $this->data = $this->loader->load($this->dataFile);
+        } catch(NotFoundException $e) {
+            $this->data = array();
+        }
+
+        $this->_loaded = true;
+        return $this->data;
+    }
+
+    /**
+     * Gets and reads blog articles.
+     *
+     * Returns an array filled with Article objects.
+     * 
+     * @param  integer $limit  [optional] How many articles to get? Default: `null`.
+     * @param  integer $offset [optional] Offset from which to get the articles. Default: `0`.
+     * @return array
+     */
+    public function getArticles($limit = null, $offset = 0) {
+        $data = $this->load();
+        $data = array_slice($data, $offset, $limit);
+
+        $articles = array();
+        foreach($data as $articleData) {
+            $articles[] = $this->readArticle($articleData['slug']);
+        }
+
+        return $articles;
+    }
+
+    /**
+     * Gets an article based on slug.
+     * 
+     * @param  string $slug Slug of the article to get.
+     * @return Article
+     */
+    public function getArticle($slug) {
+        $data = $this->load();
+        $i = ArrayUtils::search($data, 'slug', $slug);
+        if ($i === false) {
+            throw new NotFoundException('Could not find blog article with slug "'. $slug .'".');
+        }
+
+        return $this->readArticle($data[$i]['slug']);
+    }
+
+    /**
+     * Clears articles cache.
+     */
+    public function clearCache() {
+        $this->_loaded = false;
+        $this->_articles = array();
+        $this->data = array();
     }
 
     /**
@@ -39,17 +158,37 @@ class Reader
      */
     public function readFromFile(SplFileInfo $file) {
         if (!$file->isFile()) {
-            throw new NotFoundException('Could not find requested blog article to read.');
+            throw new NotFoundException('Could not find requested blog article to read from "'. $file->getPathname() .'".');
         }
 
         $article = new Article();
-        $article->setSlug($file->getFilename());
+
+        $filename = explode('.', $file->getFilename());
+        $article->setSlug(implode('.', array_slice($filename, 0, -1)));
 
         $raw = file_get_contents($file->getPathname());
         $article->setRaw($raw);
 
         $this->readMarkdown($article, $raw);
 
+        return $article;
+    }
+
+    /**
+     * Read article based on slug or get it from cache if already there.
+     * 
+     * @param  string $slug Slug of the article to get.
+     * @return Article
+     */
+    protected function readArticle($slug) {
+        if (isset($this->_articles[$slug])) {
+            return $this->_articles[$slug];
+        }
+
+        $file = new SplFileInfo($this->articlesDir . $slug .'.md');
+        $article = $this->readFromFile($file);
+
+        $this->_articles[$slug] = $article;
         return $article;
     }
 
