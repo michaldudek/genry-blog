@@ -1,11 +1,11 @@
 <?php
-namespace Genry\BlogModule\Templating;
+namespace Genry\Blog\Templating;
 
 use SplFileInfo;
 use Twig_Extension;
 
-use Genry\Genry;
-use Genry\BlogModule\Reader\Reader;
+use Genry\Blog\Reader\Article;
+use Genry\Blog\Reader\Reader;
 
 /**
  * Blog extension for Twig.
@@ -14,6 +14,7 @@ use Genry\BlogModule\Reader\Reader;
  */
 class BlogExtension extends Twig_Extension
 {
+
     /**
      * Blog Reader.
      *
@@ -22,22 +23,13 @@ class BlogExtension extends Twig_Extension
     protected $reader;
 
     /**
-     * Genry.
-     *
-     * @var Genry
-     */
-    protected $genry;
-
-    /**
      * Constructor.
      *
      * @param Reader $reader Blog reader.
-     * @param Genry  $genry  Genry
      */
-    public function __construct(Reader $reader, Genry $genry)
+    public function __construct(Reader $reader)
     {
         $this->reader = $reader;
-        $this->genry = $genry;
     }
 
     /**
@@ -48,7 +40,8 @@ class BlogExtension extends Twig_Extension
     public function getFunctions()
     {
         return array(
-            new \Twig_SimpleFunction('blog_articles', array($this, 'generateArticles'))
+            new \Twig_SimpleFunction('blog_articles', array($this, 'getArticles')),
+            new \Twig_SimpleFunction('blog_article', array($this, 'getArticle'))
         );
     }
 
@@ -63,31 +56,27 @@ class BlogExtension extends Twig_Extension
     }
 
     /**
-     * Generates articles.
+     * Returns a list of blog articles.
      *
-     * @param  array  $requestedArticles List of articles to generate.
-     * @param  string $template          Template name for articles.
-     * @param  string $targetPath        Path where the articles should be saved.
+     * @param  integer $limit  Limit.
+     * @param  integer $offset Start offset.
      *
      * @return array
      */
-    public function generateArticles(array $requestedArticles, $template, $targetPath)
+    public function getArticles($limit = null, $offset = 0)
     {
-        $articles = array();
-        $targetPath = rtrim($targetPath, DS);
+        return $this->reader->getArticles($limit, $offset);
+    }
 
-        foreach ($requestedArticles as $slug => $sourceFile) {
-            $article = $this->reader->readFromFile(new SplFileInfo($sourceFile));
-            $article->setSlug($slug);
-            $articles[] = $article;
-
-            // also generate full page for this article (but delay it by adding to the queue
-            // in order to not mess up assets containers)
-            $this->genry->addToQueue($template, array(
-                'article' => $article
-            ), $targetPath . DS . $slug .'.html');
-        }
-
-        return $articles;
+    /**
+     * Returns an article based on a slug.
+     *
+     * @param  string $slug Article slug.
+     *
+     * @return Article
+     */
+    public function getArticle($slug)
+    {
+        return $this->reader->getArticle($slug);
     }
 }

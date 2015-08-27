@@ -1,5 +1,5 @@
 <?php
-namespace Genry\BlogModule\Reader;
+namespace Genry\Blog\Reader;
 
 use MD\Foundation\MagicObject;
 

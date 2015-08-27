@@ -1,14 +1,53 @@
+parameters:
+    blog.data_file: blog.json
+    blog.articles_dir: blog
+    blog.template: ~
+    blog.target_dir: ~
+
 services:
 
     blog.reader:
-        class: Genry\BlogModule\Reader\Reader
+        class: Genry\Blog\Reader\Reader
         arguments:
             - @resource_finder
+            - @data.loader
+            - %data_dir%
+            - %blog.data_file%
+            - %blog.articles_dir%
 
-    blog.twig_extension:
-        class: Genry\BlogModule\Templating\BlogExtension
+    blog.writer:
+        class: Genry\Blog\Writer\Writer
         arguments:
             - @blog.reader
+            - @data.writer
+            - @filesystem
+            - %data_dir%
+            - %blog.data_file%
+            - %blog.articles_dir%
+
+    blog.file_watcher:
+        class: Genry\Blog\FileWatcher\BlogFilesWatcher
+        arguments:
+            - %data_dir%
+            - %blog.data_file%
+            - %blog.articles_dir%
+        notify:
+            - ['@genry', 'addFileWatcher', ['@']]
+
+    blog.generator:
+        class: Genry\Blog\Generator\Generator
+        arguments:
             - @genry
+            - @blog.reader
+            - %blog.template%
+            - %blog.target_dir%
+        notify:
+            - ['@event_manager', 'subscribeService', ['%event.will_generate%', '@=', 'clearCaches']]
+            - ['@event_manager', 'subscribeService', ['%event.will_generate%', '@=', 'queueArticlesToGenerate']]
+
+    blog.twig_extension:
+        class: Genry\Blog\Templating\BlogExtension
+        arguments:
+            - @blog.reader
         notify:
             - ['@twig', 'addExtension', ['@']]
