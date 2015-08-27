@@ -1,0 +1,14 @@
+services:
+
+    blog.reader:
+        class: Genry\BlogModule\Reader\Reader
+        arguments:
+            - @resource_finder
+
+    blog.twig_extension:
+        class: Genry\BlogModule\Templating\BlogExtension
+        arguments:
+            - @blog.reader
+            - @genry
+        notify:
+            - ['@twig', 'addExtension', ['@']]

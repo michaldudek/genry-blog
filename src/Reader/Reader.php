@@ -1,5 +1,5 @@
 <?php
-namespace MD\GenryBlogModule\Reader;
+namespace Genry\BlogModule\Reader;
 
 use DateTime;
 use SplFileInfo;
@@ -10,34 +10,42 @@ use MD\Foundation\Exceptions\NotFoundException;
 
 use Splot\Framework\Resources\Finder;
 
-use MD\GenryBlogModule\Reader\Article;
+use Genry\BlogModule\Reader\Article;
 
+/**
+ * Blog reader.
+ *
+ * @author Michał Pałys-Dudek <michal@michaldudek.pl>
+ */
 class Reader
 {
 
     /**
      * Splot Resource Finder.
-     * 
+     *
      * @var Finder
      */
     protected $finder;
 
     /**
      * Constructor.
-     * 
+     *
      * @param Finder $finder Splot Resource finder.
      */
-    public function __construct(Finder $finder) {
+    public function __construct(Finder $finder)
+    {
         $this->finder = $finder;
     }
 
     /**
      * Reads an article from the given file and returns it.
-     * 
-     * @param SplFileInfo $file
+     *
+     * @param SplFileInfo $file Article file to be read.
+     *
      * @return Article
      */
-    public function readFromFile(SplFileInfo $file) {
+    public function readFromFile(SplFileInfo $file)
+    {
         if (!$file->isFile()) {
             throw new NotFoundException('Could not find requested blog article to read.');
         }
@@ -53,7 +61,18 @@ class Reader
         return $article;
     }
 
-    protected function readMarkdown(Article $article, $markdown) {
+    /**
+     * Reads and converts markdown.
+     *
+     * @param  Article $article  Article to be converted.
+     * @param  string  $markdown Markdown text.
+     *
+     * @return Article
+     *
+     * @SuppressWarnings(PHPMD)
+     */
+    protected function readMarkdown(Article $article, $markdown)
+    {
         // line 0: title
         // line 1: ======
         // line 2: date
@@ -70,7 +89,7 @@ class Reader
         $content = '';
 
         $lines = explode(NL, $markdown);
-        foreach($lines as $i => $line) {
+        foreach ($lines as $i => $line) {
             $trimmedLine = trim($line);
 
             // line 0 must always be the title
@@ -96,7 +115,9 @@ class Reader
 
             // line 3 *might* be a cover image
             if ($i === 3) {
-                if (!empty($trimmedLine) && preg_match('/^!\[cover\]\(([^\s]+)((\s+)(.*))?\)/sUi', $trimmedLine, $matches)) {
+                if (!empty($trimmedLine)
+                    && preg_match('/^!\[cover\]\(([^\s]+)((\s+)(.*))?\)/sUi', $trimmedLine, $matches)
+                ) {
                     // $matches[1] is the cover URL
                     if (isset($matches[1])) {
                         $article->setCover($matches[1]);
@@ -131,5 +152,4 @@ class Reader
         return $article;
 
     }
-
 }
