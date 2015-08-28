@@ -11,7 +11,7 @@ use MD\Foundation\Utils\ArrayUtils;
 
 use Splot\Framework\Resources\Finder;
 
-use MD\Genry\Data\LoaderInterface;
+use Genry\Data\LoaderInterface;
 use Genry\Blog\Reader\Article;
 
 /**
